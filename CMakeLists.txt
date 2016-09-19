@@ -103,6 +103,44 @@ endif()
 # gtest_build_tests option to ON.  You can do it by running ccmake
 # or specifying the -Dgtest_build_tests=ON flag when running cmake.
 
+macro(ms_link_static_runtime FLAG_VAR)
+    if(MSVC)
+        if(${FLAG_VAR} MATCHES "/MD")
+            string(REPLACE "/MD"  "/MT" "${FLAG_VAR}" "${${FLAG_VAR}}")
+            #Save persistently
+            set(${FLAG_VAR} ${${FLAG_VAR}} CACHE STRING "" FORCE)
+        endif()
+    endif()
+endmacro(ms_link_static_runtime)
+
+macro(ms_replace_compiler_flags REPLACE_OPTION)
+    set(SUFFIXES "")
+    if((NOT DEFINED CMAKE_CONFIGURATION_TYPES) OR (CMAKE_CONFIGURATION_TYPES STREQUAL ""))
+        #set(SUFFIXES "_DEBUG" "_RELEASE" "_MINSIZEREL" "_RELWITHDEBINFO")
+        if((DEFINED CMAKE_BUILD_TYPE) AND (NOT (CMAKE_BUILD_TYPE STREQUAL "")))
+            string(TOUPPER ${CMAKE_BUILD_TYPE} SUFFIXES)
+            set(SUFFIXES "_${SUFFIXES}")
+        endif()
+    else()
+        foreach(SUFFIX ${CMAKE_CONFIGURATION_TYPES})
+            string(TOUPPER ${SUFFIX} SUFFIX)
+            set(SUFFIXES ${SUFFIXES} "_${SUFFIX}")
+        endforeach()
+    endif()
+
+    foreach(SUFFIX "" ${SUFFIXES})
+        foreach(LANG C CXX)
+            set(FLAG_VAR "CMAKE_${LANG}_FLAGS${SUFFIX}")
+            if(${REPLACE_OPTION} STREQUAL "STATIC_LINK")
+                ms_link_static_runtime(${FLAG_VAR})
+            endif()
+        endforeach()
+        #message(STATUS ${FLAG_VAR} ":" ${${FLAG_VAR}})
+    endforeach()
+endmacro(ms_replace_compiler_flags)
+
+ms_replace_compiler_flags("STATIC_LINK")
+
 if (gtest_build_tests)
   # This must be set in the root directory for the tests to be run by
   # 'make test' or ctest.
